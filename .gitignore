@@ -1,5 +1,11 @@
 HELP.md
 target/
+uploads/
+
+### Secretos — NUNCA subir a Git ###
+.env
+*.env
+!.env.example
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/

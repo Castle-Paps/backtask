@@ -1,4 +1,4 @@
-package org.example.registrotareas.Dto;
+package org.example.registrotareas.dto;
 
 public record ImagenResponse(
         Long id,
