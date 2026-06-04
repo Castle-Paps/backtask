@@ -44,6 +44,7 @@ services:
     environment:
       # ── Servidor ──────────────────────────────────────────────────────────────
       SERVER_PORT: ${SERVER_PORT:-8081}
+      SERVER_SERVLET_CONTEXT_PATH: /api
 
       # ── Base de datos (nombres estándar de Spring Boot → sin perfil) ──────────
       SPRING_DATASOURCE_URL:      jdbc:postgresql://db:5432/${DB_NAME:-tareas}

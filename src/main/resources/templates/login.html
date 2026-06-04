@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar sesion</title>
+    <link rel="stylesheet" th:href="@{/css/auth.css}">
+</head>
+<body>
+<main class="auth-shell">
+    <section class="auth-card">
+        <div class="auth-copy">
+            <p class="eyebrow">RegistroTareas</p>
+            <h1>Iniciar sesion</h1>
+            <p>El formulario se conserva como formalidad. El acceso al panel ya no depende de autenticacion real.</p>
+        </div>
+
+        <div class="auth-panel">
+            <div class="alert success" th:if="${param.registrado}">
+                Registro completado. Ya puedes iniciar sesion.
+            </div>
+            <div class="alert warning" th:if="${param.logout}">
+                Sesion cerrada correctamente.
+            </div>
+            <form th:action="@{/login}" method="post" class="auth-form">
+                <label>
+                    <span>Usuario</span>
+                    <input type="text" name="username" autocomplete="username" placeholder="Ingresa tu usuario" required>
+                </label>
+                <label>
+                    <span>Contrasena</span>
+                    <input type="password" name="password" autocomplete="current-password" placeholder="Ingresa tu contrasena" required>
+                </label>
+                <button type="submit">Entrar</button>
+            </form>
+            <p class="auth-link">
+                ?No tienes cuenta? <a th:href="@{/registro}">Registrarte</a>
+            </p>
+        </div>
+    </section>
+</main>
+</body>
+</html>

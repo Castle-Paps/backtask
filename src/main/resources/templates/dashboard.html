@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel</title>
+    <link rel="stylesheet" th:href="@{/css/auth.css}">
+</head>
+<body>
+<main class="auth-shell">
+    <section class="auth-card wide">
+        <div class="auth-copy">
+            <p class="eyebrow">Acceso abierto</p>
+            <h1>Panel principal</h1>
+            <p>Bienvenido, <strong th:text="${usuario}">usuario</strong>.</p>
+        </div>
+
+        <div class="auth-panel">
+            <p class="dashboard-text">
+                El sistema esta disponible sin bloqueo de Spring Security. Este panel queda como entrada visual al sistema de tareas.
+            </p>
+            <div class="dashboard-actions">
+                <a class="button-link" th:href="@{/tareas}">Ver tareas</a>
+                <a class="button-link secondary" th:href="@{/logout}">Cerrar sesion</a>
+            </div>
+        </div>
+    </section>
+</main>
+</body>
+</html>

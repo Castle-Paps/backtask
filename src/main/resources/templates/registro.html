@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro formal</title>
+    <link rel="stylesheet" th:href="@{/css/auth.css}">
+</head>
+<body>
+<main class="auth-shell">
+    <section class="auth-card wide">
+        <div class="auth-copy">
+            <p class="eyebrow">Acceso al sistema</p>
+            <h1>Registro formal</h1>
+            <p>Crea tu cuenta con los datos requeridos para acceder al sistema.</p>
+        </div>
+
+        <div class="auth-panel">
+            <div class="alert error" th:if="${errorRegistro}" th:text="${errorRegistro}"></div>
+            <form th:action="@{/registro}" th:object="${registroUsuarioRequest}" method="post" class="auth-form grid">
+                <label>
+                    <span>Nombre</span>
+                    <input type="text" th:field="*{nombre}" autocomplete="given-name" placeholder="Nombre" required>
+                    <small th:if="${#fields.hasErrors('nombre')}" th:errors="*{nombre}"></small>
+                </label>
+                <label>
+                    <span>Apellido</span>
+                    <input type="text" th:field="*{apellido}" autocomplete="family-name" placeholder="Apellido" required>
+                    <small th:if="${#fields.hasErrors('apellido')}" th:errors="*{apellido}"></small>
+                </label>
+                <label>
+                    <span>Edad</span>
+                    <input type="number" th:field="*{edad}" min="1" placeholder="Edad" required>
+                    <small th:if="${#fields.hasErrors('edad')}" th:errors="*{edad}"></small>
+                </label>
+                <label>
+                    <span>Usuario</span>
+                    <input type="text" th:field="*{usuario}" autocomplete="username" placeholder="Usuario" required>
+                    <small th:if="${#fields.hasErrors('usuario')}" th:errors="*{usuario}"></small>
+                </label>
+                <label>
+                    <span>Contraseña</span>
+                    <input type="password" th:field="*{contrasena}" autocomplete="new-password" placeholder="Contraseña" required>
+                    <small th:if="${#fields.hasErrors('contrasena')}" th:errors="*{contrasena}"></small>
+                </label>
+                <label>
+                    <span>Confirmar contraseña</span>
+                    <input type="password" th:field="*{confirmarContrasena}" autocomplete="new-password" placeholder="Confirmar contraseña" required>
+                    <small th:if="${#fields.hasErrors('confirmarContrasena')}" th:errors="*{confirmarContrasena}"></small>
+                </label>
+                <button type="submit">Registrar</button>
+            </form>
+            <p class="auth-link">
+                ¿Ya tienes cuenta? <a th:href="@{/login}">Iniciar sesión</a>
+            </p>
+        </div>
+    </section>
+</main>
+</body>
+</html>
