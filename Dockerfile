@@ -8,7 +8,7 @@ RUN mvn dependency:go-offline -q
 
 # Compilar sin tests
 COPY src ./src
-RUN mvn package -DskipTests
+RUN mvn package -Dmaven.test.skip=true
 
 # ── Etapa 2: imagen final (solo JRE alpine, ~100 MB vs ~600 MB) ───────────────
 FROM eclipse-temurin:21-jre-alpine
