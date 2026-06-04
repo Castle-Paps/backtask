@@ -42,21 +42,26 @@ services:
       db:
         condition: service_healthy
     environment:
-      SERVER_PORT:          8081
-      DB_URL:               jdbc:postgresql://db:5432/${DB_NAME:-tareas}
-      DB_USERNAME:          ${DB_USERNAME:-postgres}
-      DB_PASSWORD:          ${DB_PASSWORD}
-      JWT_SECRET:           ${JWT_SECRET}
-      JWT_EXPIRATION_MS:    ${JWT_EXPIRATION_MS:-86400000}
-      GOOGLE_CLIENT_ID:     ${GOOGLE_CLIENT_ID}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-      GOOGLE_REFRESH_TOKEN: ${GOOGLE_REFRESH_TOKEN}
-      GOOGLE_DRIVE_ROOT_FOLDER: ${GOOGLE_DRIVE_ROOT_FOLDER:-RegistroTareas}
-      # Producción: no mostrar stacktrace, modo validate de Hibernate
-      SPRING_JPA_HIBERNATE_DDL_AUTO: ${DDL_AUTO:-validate}
-      SPRING_PROFILES_ACTIVE: prod
+      # ── Servidor ──────────────────────────────────────────────────────────────
+      SERVER_PORT: ${SERVER_PORT:-8081}
+
+      # ── Base de datos (nombres estándar de Spring Boot → sin perfil) ──────────
+      SPRING_DATASOURCE_URL:      jdbc:postgresql://db:5432/${DB_NAME:-tareas}
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: ${DDL_AUTO:-update}
+
+      # ── JWT ───────────────────────────────────────────────────────────────────
+      APP_JWT_SECRET:        ${JWT_SECRET}
+      APP_JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-86400000}
+
+      # ── Google Drive ──────────────────────────────────────────────────────────
+      GOOGLE_CLIENT_ID:          ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET:      ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_REFRESH_TOKEN:      ${GOOGLE_REFRESH_TOKEN}
+      GOOGLE_DRIVE_ROOT_FOLDER:  ${GOOGLE_DRIVE_ROOT_FOLDER:-RegistroTareas}
     expose:
-      - "8081"
+      - "${SERVER_PORT:-8081}"
     networks:
       - interna
     healthcheck:
@@ -67,10 +72,6 @@ services:
       start_period: 60s
 
   # ── Cloudflare Tunnel ─────────────────────────────────────────────────────────
-  # Crea un túnel cifrado hacia la edge de Cloudflare.
-  # NO abre puertos. NO requiere IP pública. Funciona detrás de CGNAT.
-  # Rutas configuradas en el dashboard de Cloudflare Zero Trust:
-  #   task.yzulatecperu.uk  →  http://app:8088
   cloudflared:
     image: cloudflare/cloudflared:latest
     container_name: registrotareas_tunnel
