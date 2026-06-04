@@ -23,8 +23,7 @@ public record TareaResponse(
         Integer tiempoDias,
         Integer diasRestantes,
         String colorUrgencia,
-        String videoUrl,
-        List<ImagenResponse> imagenes,
+        List<ArchivoResponse> archivos,    // archivos en Google Drive
         String whatsappUrl,
         String resumenWhatsapp,
         List<SeguimientoResponse> historial

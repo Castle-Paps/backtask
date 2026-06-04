@@ -1,6 +1,14 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# RegistroTareas — Producción con Cloudflare Tunnel
+# Dominio: task.yzulatecperu.uk
+#
+# SIN puertos expuestos al exterior.
+# Cloudflare Tunnel gestiona SSL y el acceso externo.
+# ──────────────────────────────────────────────────────────────────────────────
+
 services:
 
-  # ── Base de datos ────────────────────────────────────────────────────────────
+  # ── PostgreSQL ────────────────────────────────────────────────────────────────
   db:
     image: postgres:16-alpine
     container_name: registrotareas_db
@@ -11,67 +19,76 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    # Solo accesible desde la red interna Docker, NO expuesto al exterior
     expose:
       - "5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres} -d ${DB_NAME:-tareas}"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 20s
+    networks:
+      - interna
 
-  # ── Backend Spring Boot ──────────────────────────────────────────────────────
+  # ── Backend Spring Boot ───────────────────────────────────────────────────────
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: registrotareas:latest
     container_name: registrotareas_app
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
     environment:
-      SERVER_PORT:      8088
-      DB_URL:           jdbc:postgresql://db:5432/${DB_NAME:-tareas}
-      DB_USERNAME:      ${DB_USERNAME:-postgres}
-      DB_PASSWORD:      ${DB_PASSWORD}
-      JWT_SECRET:       ${JWT_SECRET}
-      JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-86400000}
-    volumes:
-      # Los uploads (fotos/videos) persisten fuera del contenedor
-      - uploads_data:/app/uploads
-    # Solo accesible internamente; Caddy lo expone hacia afuera
+      SERVER_PORT:          8081
+      DB_URL:               jdbc:postgresql://db:5432/${DB_NAME:-tareas}
+      DB_USERNAME:          ${DB_USERNAME:-postgres}
+      DB_PASSWORD:          ${DB_PASSWORD}
+      JWT_SECRET:           ${JWT_SECRET}
+      JWT_EXPIRATION_MS:    ${JWT_EXPIRATION_MS:-86400000}
+      GOOGLE_CLIENT_ID:     ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_REFRESH_TOKEN: ${GOOGLE_REFRESH_TOKEN}
+      GOOGLE_DRIVE_ROOT_FOLDER: ${GOOGLE_DRIVE_ROOT_FOLDER:-RegistroTareas}
+      # Producción: no mostrar stacktrace, modo validate de Hibernate
+      SPRING_JPA_HIBERNATE_DDL_AUTO: ${DDL_AUTO:-validate}
+      SPRING_PROFILES_ACTIVE: prod
     expose:
-      - "8088"
+      - "8081"
+    networks:
+      - interna
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:${SERVER_PORT:-8081}/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
-  # ── Caddy (proxy inverso + HTTPS automático con Let's Encrypt) ───────────────
-  caddy:
-    image: caddy:2-alpine
-    container_name: registrotareas_caddy
+  # ── Cloudflare Tunnel ─────────────────────────────────────────────────────────
+  # Crea un túnel cifrado hacia la edge de Cloudflare.
+  # NO abre puertos. NO requiere IP pública. Funciona detrás de CGNAT.
+  # Rutas configuradas en el dashboard de Cloudflare Zero Trust:
+  #   task.yzulatecperu.uk  →  http://app:8088
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: registrotareas_tunnel
     restart: unless-stopped
-    depends_on:
-      - app
-    ports:
-      - "80:80"     # Redirect HTTP → HTTPS
-      - "443:443"   # HTTPS
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-
-  # ── DuckDNS (actualiza la IP dinámica cada 5 minutos) ────────────────────────
-  duckdns:
-    image: linuxserver/duckdns
-    container_name: registrotareas_duckdns
-    restart: unless-stopped
+    command: tunnel --no-autoupdate run
     environment:
-      - TZ=America/Lima
-      - SUBDOMAINS=${DUCKDNS_SUBDOMAIN}   # Solo el nombre, sin .duckdns.org
-      - TOKEN=${DUCKDNS_TOKEN}
-    volumes:
-      - duckdns_config:/config
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      app:
+        condition: service_healthy
+    networks:
+      - interna
+
+networks:
+  interna:
+    driver: bridge
+    name: registrotareas_net
 
 volumes:
   postgres_data:
-  uploads_data:
-  caddy_data:
-  caddy_config:
-  duckdns_config:
+    name: registrotareas_postgres
