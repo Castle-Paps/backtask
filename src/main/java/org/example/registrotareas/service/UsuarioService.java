@@ -115,6 +115,7 @@ public class UsuarioService implements UserDetailsService {
      */
     @Transactional
     public UsuarioResponse crearUsuarioSimple(CrearUsuarioSimpleRequest request) {
+        verificarEsAdmin();   // defensa extra además de SecurityConfig
         if (usuarioRepositorio.existsByUsuarioIgnoreCase(request.usuario())) {
             throw new IllegalArgumentException("El usuario '" + request.usuario() + "' ya existe");
         }
@@ -133,6 +134,17 @@ public class UsuarioService implements UserDetailsService {
 
     public long totalUsuarios() {
         return usuarioRepositorio.count();
+    }
+
+    /** Lanza excepción si el usuario autenticado no es ROLE_ADMIN. */
+    private void verificarEsAdmin() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        boolean esAdmin = auth != null && auth.isAuthenticated()
+                && auth.getAuthorities().stream()
+                        .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        if (!esAdmin) {
+            throw new IllegalArgumentException("Solo el administrador puede gestionar usuarios.");
+        }
     }
 
     public Usuario buscarPorNombreUsuario(String username) {

@@ -49,7 +49,8 @@ public class AutenticacionController {
         String token = jwtService.generarToken(usuario.getUsuario());
         String nombre = usuario.getNombre() + " " + usuario.getApellido();
 
-        return ResponseEntity.ok(new LoginResponse(token, usuario.getUsuario(), nombre));
+        return ResponseEntity.ok(new LoginResponse(
+                token, usuario.getUsuario(), nombre, usuario.getRol().name()));
     }
 
     @PostMapping("/registro")

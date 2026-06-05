@@ -55,6 +55,7 @@ public class SecurityConfig {
                         // ── Públicos ──────────────────────────────────────────
                         .requestMatchers("/health").permitAll()
                         .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers("/uploads/**").permitAll()   // imágenes públicas (AsyncImage)
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
                         // ── Solo ROLE_ADMIN ───────────────────────────────────
                         .requestMatchers("/usuarios/**").hasAuthority("ROLE_ADMIN")

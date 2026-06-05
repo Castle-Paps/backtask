@@ -8,7 +8,7 @@ import org.example.registrotareas.repository.ArchivoSeguimientoRepositorio;
 import org.example.registrotareas.repository.ArchivoTareaRepositorio;
 import org.example.registrotareas.repository.SeguimientoRepositorio;
 import org.example.registrotareas.repository.TareaRepositorio;
-import org.example.registrotareas.service.DriveService;
+import org.example.registrotareas.service.LocalStorageService;
 import org.example.registrotareas.service.MensajeWhatsappService;
 import org.example.registrotareas.service.TareaServicios;
 import org.example.registrotareas.util.TelefonoUtil;
@@ -19,6 +19,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -48,7 +49,7 @@ public class TareaServiciosImpl implements TareaServicios {
     private final ArchivoTareaRepositorio archivoTareaRepositorio;
     private final ArchivoSeguimientoRepositorio archivoSeguimientoRepositorio;
     private final SeguimientoRepositorio seguimientoRepositorio;
-    private final DriveService driveService;
+    private final LocalStorageService storageService;
     private final MensajeWhatsappService mensajeWhatsappService;
 
     public TareaServiciosImpl(
@@ -56,14 +57,14 @@ public class TareaServiciosImpl implements TareaServicios {
             ArchivoTareaRepositorio archivoTareaRepositorio,
             ArchivoSeguimientoRepositorio archivoSeguimientoRepositorio,
             SeguimientoRepositorio seguimientoRepositorio,
-            DriveService driveService,
+            LocalStorageService storageService,
             MensajeWhatsappService mensajeWhatsappService
     ) {
         this.tareaRepository = tareaRepository;
         this.archivoTareaRepositorio = archivoTareaRepositorio;
         this.archivoSeguimientoRepositorio = archivoSeguimientoRepositorio;
         this.seguimientoRepositorio = seguimientoRepositorio;
-        this.driveService = driveService;
+        this.storageService = storageService;
         this.mensajeWhatsappService = mensajeWhatsappService;
     }
 
@@ -310,11 +311,7 @@ public class TareaServiciosImpl implements TareaServicios {
         ArchivoTarea archivo = archivoTareaRepositorio.findByIdAndTareaId(archivoId, tareaId)
                 .orElseThrow(() -> new ResourceNotFoundException("Archivo no encontrado"));
 
-        try {
-            driveService.eliminar(archivo.getDriveFileId());
-        } catch (Exception e) {
-            log.warn("No se pudo eliminar de Drive (ID: {}): {}", archivo.getDriveFileId(), e.getMessage());
-        }
+        storageService.eliminar(archivo.getUrlArchivo());
 
         tarea.getArchivos().remove(archivo);
         archivoTareaRepositorio.delete(archivo);
@@ -333,60 +330,40 @@ public class TareaServiciosImpl implements TareaServicios {
                 "LINK_PRELLENADO", "Abre este enlace para enviar el resumen al cliente.");
     }
 
-    // ─── DRIVE HELPERS ────────────────────────────────────────────────────────
+    // ─── ALMACENAMIENTO LOCAL ───────────────────────────────────────────────────
 
     private void subirArchivoATarea(Tarea tarea, MultipartFile archivo) {
         if (archivo == null || archivo.isEmpty()) return;
         validarArchivo(archivo);
-        try {
-            DriveService.DriveArchivoInfo info = driveService.subir(
-                    archivo,
-                    tarea.getNombreCliente(),   // nivel 1 → cliente
-                    tarea.getNumeroTicket(),    // nivel 2 → ticket
-                    "problema",                // nivel 3 → imágenes iniciales del problema
-                    obtenerUsuarioActual());
 
-            ArchivoTarea entidad = new ArchivoTarea();
-            entidad.setTarea(tarea);
-            entidad.setDriveFileId(info.driveFileId());
-            entidad.setNombreArchivo(info.nombreArchivo());
-            entidad.setMimeType(info.mimeType());
-            entidad.setTamanoBytes(info.tamanoBytes());
-            entidad.setUrlArchivo(info.urlArchivo());
-            entidad.setUsuarioCreacion(obtenerUsuarioActual());
-            tarea.getArchivos().add(archivoTareaRepositorio.save(entidad));
+        LocalStorageService.ArchivoLocalInfo info = storageService.guardar(archivo, "tareas");
 
-        } catch (Exception e) {
-            log.error("Error subiendo archivo '{}' a Drive: {}", archivo.getOriginalFilename(), e.getMessage());
-            throw new RuntimeException("Error al subir archivo a Google Drive: " + e.getMessage(), e);
-        }
+        ArchivoTarea entidad = new ArchivoTarea();
+        entidad.setTarea(tarea);
+        entidad.setDriveFileId(info.rutaRelativa());   // ruta relativa (para eliminar)
+        entidad.setNombreArchivo(info.nombreOriginal());
+        entidad.setMimeType(info.mimeType());
+        entidad.setTamanoBytes(info.tamanoBytes());
+        entidad.setUrlArchivo(info.rutaRelativa());    // se convierte a URL absoluta al responder
+        entidad.setUsuarioCreacion(obtenerUsuarioActual());
+        tarea.getArchivos().add(archivoTareaRepositorio.save(entidad));
     }
 
     private void subirArchivoASeguimiento(Seguimiento seguimiento, String ticket, MultipartFile archivo) {
         if (archivo == null || archivo.isEmpty()) return;
         validarArchivo(archivo);
-        try {
-            DriveService.DriveArchivoInfo info = driveService.subir(
-                    archivo,
-                    seguimiento.getTarea().getNombreCliente(),  // nivel 1 → cliente
-                    ticket,                                     // nivel 2 → ticket
-                    "seguimiento",                              // nivel 3 → avances/completar/cancelar
-                    obtenerUsuarioActual());
 
-            ArchivoSeguimiento entidad = new ArchivoSeguimiento();
-            entidad.setSeguimiento(seguimiento);
-            entidad.setDriveFileId(info.driveFileId());
-            entidad.setNombreArchivo(info.nombreArchivo());
-            entidad.setMimeType(info.mimeType());
-            entidad.setTamanoBytes(info.tamanoBytes());
-            entidad.setUrlArchivo(info.urlArchivo());
-            entidad.setUsuarioCreacion(obtenerUsuarioActual());
-            seguimiento.getArchivos().add(archivoSeguimientoRepositorio.save(entidad));
+        LocalStorageService.ArchivoLocalInfo info = storageService.guardar(archivo, "seguimientos");
 
-        } catch (Exception e) {
-            log.error("Error subiendo evidencia '{}' a Drive: {}", archivo.getOriginalFilename(), e.getMessage());
-            throw new RuntimeException("Error al subir evidencia a Google Drive: " + e.getMessage(), e);
-        }
+        ArchivoSeguimiento entidad = new ArchivoSeguimiento();
+        entidad.setSeguimiento(seguimiento);
+        entidad.setDriveFileId(info.rutaRelativa());
+        entidad.setNombreArchivo(info.nombreOriginal());
+        entidad.setMimeType(info.mimeType());
+        entidad.setTamanoBytes(info.tamanoBytes());
+        entidad.setUrlArchivo(info.rutaRelativa());
+        entidad.setUsuarioCreacion(obtenerUsuarioActual());
+        seguimiento.getArchivos().add(archivoSeguimientoRepositorio.save(entidad));
     }
 
     private void validarArchivo(MultipartFile archivo) {
@@ -512,13 +489,31 @@ public class TareaServiciosImpl implements TareaServicios {
 
     private ArchivoResponse convertirArchivoTareaAResponse(ArchivoTarea a) {
         return new ArchivoResponse(a.getId(), a.getDriveFileId(), a.getNombreArchivo(),
-                a.getMimeType(), a.getTamanoBytes(), a.getUrlArchivo(),
+                a.getMimeType(), a.getTamanoBytes(), urlAbsoluta(a.getUrlArchivo()),
                 a.getFechaSubida(), a.getUsuarioCreacion());
     }
 
     private ArchivoResponse convertirArchivoSeguimientoAResponse(ArchivoSeguimiento a) {
         return new ArchivoResponse(a.getId(), a.getDriveFileId(), a.getNombreArchivo(),
-                a.getMimeType(), a.getTamanoBytes(), a.getUrlArchivo(),
+                a.getMimeType(), a.getTamanoBytes(), urlAbsoluta(a.getUrlArchivo()),
                 a.getFechaSubida(), a.getUsuarioCreacion());
+    }
+
+    /**
+     * Convierte la ruta relativa (uploads/tareas/xxx.jpg) en URL absoluta
+     * según cómo el cliente accede al servidor (host local o dominio Cloudflare).
+     * Requiere server.forward-headers-strategy=framework para funcionar tras Cloudflare.
+     */
+    private String urlAbsoluta(String rutaRelativa) {
+        if (rutaRelativa == null || rutaRelativa.isBlank()) return rutaRelativa;
+        if (rutaRelativa.startsWith("http")) return rutaRelativa; // ya es absoluta (datos viejos)
+        try {
+            return ServletUriComponentsBuilder.fromCurrentContextPath()
+                    .path("/").path(rutaRelativa)
+                    .toUriString();
+        } catch (Exception e) {
+            // Sin contexto de request (ej. tests) → devolver relativa
+            return rutaRelativa;
+        }
     }
 }

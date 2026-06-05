@@ -56,11 +56,11 @@ services:
       APP_JWT_SECRET:        ${JWT_SECRET}
       APP_JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-86400000}
 
-      # ── Google Drive ──────────────────────────────────────────────────────────
-      GOOGLE_CLIENT_ID:          ${GOOGLE_CLIENT_ID}
-      GOOGLE_CLIENT_SECRET:      ${GOOGLE_CLIENT_SECRET}
-      GOOGLE_REFRESH_TOKEN:      ${GOOGLE_REFRESH_TOKEN}
-      GOOGLE_DRIVE_ROOT_FOLDER:  ${GOOGLE_DRIVE_ROOT_FOLDER:-RegistroTareas}
+      # ── Almacenamiento local de imágenes ──────────────────────────────────────
+      APP_UPLOADS_DIR: /app/uploads
+    volumes:
+      # Las imágenes persisten fuera del contenedor
+      - uploads_data:/app/uploads
     expose:
       - "${SERVER_PORT:-8081}"
     networks:
@@ -94,3 +94,5 @@ networks:
 volumes:
   postgres_data:
     name: registrotareas_postgres
+  uploads_data:
+    name: registrotareas_uploads
